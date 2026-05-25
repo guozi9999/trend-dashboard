@@ -1,0 +1,23 @@
+html {
+  background: #fafafa;
+}
+
+body {
+  min-width: 320px;
+}
+
+.dashboard-band {
+  border-bottom: 1px solid rgb(228 228 231);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 250, 250, 0.98)),
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.1), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(244, 63, 94, 0.08), transparent 30%);
+}
+
+.metric-tile {
+  min-height: 104px;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
