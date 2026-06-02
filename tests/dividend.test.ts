@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildAnnualDividends, buildDividendForecast, buildStockYieldBand, calculateCagr, classifyDividendSignal, countContinuousDividendYears } from '../shared/utils/dividend'
+import { buildAnnualDividends, buildDividendForecast, buildStockYieldBand, calculateCagr, calculateStrategyTargetYield, calculateYieldSpreadBp, chooseSignalDividendYield, classifyDividendSignal, countContinuousDividendYears } from '../shared/utils/dividend'
+import { calculateRoc, getRotationAction } from '../shared/utils/rotation'
 import type { DividendRecord } from '../shared/types/stock'
 
 function dividend(reportDate: string, cashPerShare: number, progress = '实施分配'): DividendRecord {
@@ -58,11 +59,25 @@ describe('dividend calculations', () => {
   })
 
   it('classifies dividend yield by yield level and bond spread', () => {
-    expect(classifyDividendSignal(4.6, 1.75, 285).level).toBe('deep_value')
-    expect(classifyDividendSignal(4.1, 1.75, 235).level).toBe('accumulate')
-    expect(classifyDividendSignal(3.1, 1.75, 135).level).toBe('fair')
-    expect(classifyDividendSignal(2.3, 1.75, 55).level).toBe('wait')
-    expect(classifyDividendSignal(3.75, 1.75, 200).summary).toContain('低于 4% 攒股线')
+    expect(classifyDividendSignal(4.6, 1.75).level).toBe('deep_value')
+    expect(classifyDividendSignal(4.1, 1.75).level).toBe('accumulate')
+    expect(classifyDividendSignal(3.1, 1.75).level).toBe('fair')
+    expect(classifyDividendSignal(2.3, 1.75).level).toBe('wait')
+    expect(classifyDividendSignal(3.75, 1.75).summary).toContain('低于 4% 攒股线')
+  })
+
+  it('calculates BP spread from percent yields and strategy target yields', () => {
+    expect(calculateYieldSpreadBp(4.23, 1.7009)).toBe(253)
+    expect(calculateYieldSpreadBp(null, 1.7)).toBeNull()
+    expect(calculateStrategyTargetYield(1.7, 4, 200)).toBe(4)
+    expect(calculateStrategyTargetYield(2.3, 4, 200)).toBe(4.3)
+    expect(calculateStrategyTargetYield(2.3, 4.5, 250)).toBe(4.8)
+  })
+
+  it('uses the lower current or forecast yield for strategy signal', () => {
+    expect(chooseSignalDividendYield(4.6, 3.9)).toBe(3.9)
+    expect(chooseSignalDividendYield(4.6, null)).toBe(4.6)
+    expect(classifyDividendSignal(chooseSignalDividendYield(4.6, 3.9), 1.75).level).toBe('fair')
   })
 
   it('builds stock-specific historical yield bands', () => {
@@ -99,5 +114,19 @@ describe('dividend calculations', () => {
       forecastDividendYield: 4.32,
       forecastGrowthRate: 8
     })
+  })
+
+  it('calculates 20-day ROC from latest close and close 20 trading days ago', () => {
+    const points = Array.from({ length: 21 }, (_, index) => ({
+      date: `2026-05-${String(index + 1).padStart(2, '0')}`,
+      close: index === 0 ? 100 : 100 + index
+    }))
+    const result = calculateRoc(points, 20)
+
+    expect(result.base?.close).toBe(100)
+    expect(result.latest?.close).toBe(120)
+    expect(result.roc).toBe(20)
+    expect(getRotationAction(result.roc)).toBe('hold')
+    expect(getRotationAction(-0.01)).toBe('cash')
   })
 })

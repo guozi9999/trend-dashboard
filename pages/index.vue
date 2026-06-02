@@ -45,6 +45,9 @@ const { data, pending, error, refresh } = await useAsyncData(
 const dashboard = computed(() => data.value)
 const annualRows = computed(() => dashboard.value?.dividend.annual ?? [])
 const dividendRows = computed(() => dashboard.value?.dividend.records ?? [])
+const rotationRows = computed(() => dashboard.value?.rotation.assets ?? [])
+const marketTrendRows = computed(() => dashboard.value?.marketTemperature.trend.rows ?? [])
+const marketSectorRows = computed(() => dashboard.value?.marketTemperature.sector.rows ?? [])
 const maxAnnualCash = computed(() => Math.max(...annualRows.value.map((item) => item.cashPerShare), 0))
 const latestYield = computed(() => dashboard.value?.dividend.latestAnnualYield ?? null)
 const cn10y = computed(() => dashboard.value?.treasury.latest.cn10y ?? null)
@@ -116,6 +119,22 @@ function formatMarketCap(value: number | null | undefined) {
   return `${(value / 100_000_000).toFixed(0)}亿`
 }
 
+function formatTurnover(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+
+  return `${(value / 100_000_000).toFixed(2)}亿`
+}
+
+function formatRankChange(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return '-'
+  }
+
+  return value > 0 ? `+${value}` : `${value}`
+}
+
 function annualBarWidth(value: number) {
   if (!maxAnnualCash.value) {
     return '0%'
@@ -127,9 +146,209 @@ function annualBarWidth(value: number) {
 
 <template>
   <div>
-    <section class="dashboard-band">
-      <UContainer class="py-10 sm:py-12">
-        <div>
+    <UContainer class="py-8">
+      <UAlert
+        v-if="error"
+        color="red"
+        variant="soft"
+        icon="i-heroicons-exclamation-triangle"
+        title="查询失败"
+        :description="error.statusMessage || error.message"
+        class="mb-6"
+      />
+
+      <div v-if="dashboard" class="space-y-6">
+        <section class="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <h3 class="text-lg font-semibold text-zinc-950">轮动策略</h3>
+                <UBadge color="gray" variant="soft">ROC({{ dashboard.rotation.lookbackDays }})</UBadge>
+              </div>
+              <p class="mt-2 max-w-4xl text-sm leading-6 text-zinc-600">
+                {{ dashboard.rotation.summary }}
+              </p>
+            </div>
+            <UBadge
+              :color="dashboard.rotation.action === 'hold' ? 'emerald' : dashboard.rotation.action === 'cash' ? 'amber' : 'gray'"
+              size="lg"
+              variant="soft"
+            >
+              {{ dashboard.rotation.actionLabel }}
+            </UBadge>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-3">
+            <div class="rounded-md border border-zinc-100 bg-zinc-50 p-4">
+              <p class="text-sm text-zinc-500">当前最强</p>
+              <p class="mt-2 text-2xl font-semibold text-zinc-950">{{ dashboard.rotation.winner?.name || '-' }}</p>
+              <p class="mt-2 text-xs text-zinc-500">
+                {{ dashboard.rotation.winner?.code || '-' }} · {{ formatPercent(dashboard.rotation.winner?.roc20) }}
+              </p>
+            </div>
+            <div class="rounded-md border border-zinc-100 bg-zinc-50 p-4">
+              <p class="text-sm text-zinc-500">操作标的</p>
+              <p class="mt-2 text-2xl font-semibold text-zinc-950">{{ dashboard.rotation.winner?.tradeName || '-' }}</p>
+              <p class="mt-2 text-xs text-zinc-500">
+                {{ dashboard.rotation.winner?.tradeCode || '-' }} · 成交额 {{ formatTurnover(dashboard.rotation.winner?.tradeTurnover) }}
+              </p>
+            </div>
+            <div class="rounded-md border border-zinc-100 bg-zinc-50 p-4">
+              <p class="text-sm text-zinc-500">计算日期</p>
+              <p class="mt-2 text-2xl font-semibold text-zinc-950">{{ formatDate(dashboard.rotation.winner?.latestDate) }}</p>
+              <p class="mt-2 text-xs text-zinc-500">
+                基准 {{ formatDate(dashboard.rotation.winner?.baseDate) }} · {{ dashboard.rotation.action === 'hold' ? '为正持有' : dashboard.rotation.action === 'cash' ? '为负空仓' : '等待数据' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-5 overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+                <tr>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">轮动品种</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">20日ROC</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最新收盘</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">20日前收盘</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">操作标的</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">ETF成交额</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-100">
+                <tr
+                  v-for="item in rotationRows"
+                  :key="item.code"
+                  class="hover:bg-zinc-50"
+                >
+                  <td class="whitespace-nowrap px-3 py-3 font-medium text-zinc-900">{{ item.rank }}</td>
+                  <td class="whitespace-nowrap px-3 py-3 text-zinc-900">{{ item.name }} {{ item.code }}</td>
+                  <td
+                    class="whitespace-nowrap px-3 py-3 font-semibold"
+                    :class="(item.roc20 ?? 0) > 0 ? 'text-emerald-700' : 'text-zinc-700'"
+                  >
+                    {{ formatPercent(item.roc20) }}
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.latestClose, 2) }}</td>
+                  <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.baseClose, 2) }}</td>
+                  <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ item.tradeName }} {{ item.tradeCode }}</td>
+                  <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatTurnover(item.tradeTurnover) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="mt-4 text-sm leading-6 text-zinc-500">
+            {{ dashboard.rotation.calculation }}
+          </p>
+        </section>
+
+        <section class="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div class="flex flex-wrap items-center gap-3">
+                <h3 class="text-lg font-semibold text-zinc-950">市场温度</h3>
+                <UBadge color="gray" variant="soft">本地快照</UBadge>
+              </div>
+              <p class="mt-2 max-w-4xl text-sm leading-6 text-zinc-600">
+                {{ dashboard.marketTemperature.summary }}
+              </p>
+            </div>
+            <div class="text-sm text-zinc-500">
+              {{ formatDate(dashboard.marketTemperature.trend.tradeDate || dashboard.marketTemperature.sector.tradeDate) }}
+            </div>
+          </div>
+
+          <div class="mt-5 grid gap-6 2xl:grid-cols-2">
+            <div>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <h4 class="font-semibold text-zinc-950">{{ dashboard.marketTemperature.trend.title }}</h4>
+                <UBadge color="gray" variant="soft">{{ marketTrendRows.length }} 项</UBadge>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+                    <tr>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">代码</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">名称</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">现价</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">20日均线</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">偏离率</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">量比</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">状态转变</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">区间涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名变化</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-100">
+                    <tr v-for="item in marketTrendRows" :key="`trend-${item.code}`" class="hover:bg-zinc-50">
+                      <td class="whitespace-nowrap px-3 py-3 font-medium text-zinc-900">{{ item.rank }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ item.code }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-cyan-700">{{ item.name }}</td>
+                      <td class="whitespace-nowrap px-3 py-3" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <h4 class="font-semibold text-zinc-950">{{ dashboard.marketTemperature.sector.title }}</h4>
+                <UBadge color="gray" variant="soft">{{ marketSectorRows.length }} 项</UBadge>
+              </div>
+              <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-left text-sm">
+                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+                    <tr>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">代码</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">名称</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">现价</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">20日均线</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">偏离率</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">量比</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">状态转变</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">区间涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名变化</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-zinc-100">
+                    <tr v-for="item in marketSectorRows" :key="`sector-${item.code}`" class="hover:bg-zinc-50">
+                      <td class="whitespace-nowrap px-3 py-3 font-medium text-zinc-900">{{ item.rank }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ item.code }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-cyan-700">{{ item.name }}</td>
+                      <td class="whitespace-nowrap px-3 py-3" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-3 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p class="mt-4 text-sm leading-6 text-zinc-500">
+            {{ dashboard.marketTemperature.calculation }}
+          </p>
+        </section>
+
+        <section>
           <form class="w-full rounded-md border border-zinc-200 bg-white p-4 shadow-sm" @submit.prevent="runSearch()">
             <label class="text-sm font-medium text-zinc-700" for="stock-search">股票</label>
             <div class="mt-2 grid gap-2 sm:grid-cols-[minmax(180px,1fr)_86px_128px]">
@@ -192,22 +411,8 @@ function annualBarWidth(value: number) {
               </div>
             </div>
           </form>
-        </div>
-      </UContainer>
-    </section>
+        </section>
 
-    <UContainer class="py-8">
-      <UAlert
-        v-if="error"
-        color="red"
-        variant="soft"
-        icon="i-heroicons-exclamation-triangle"
-        title="查询失败"
-        :description="error.statusMessage || error.message"
-        class="mb-6"
-      />
-
-      <div v-if="dashboard" class="space-y-6">
         <section class="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
           <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
@@ -268,9 +473,11 @@ function annualBarWidth(value: number) {
           </div>
 
           <div class="metric-tile rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
-            <p class="text-sm text-zinc-500">股债息差</p>
-            <p class="mt-3 text-3xl font-semibold text-blue-700">{{ formatBp(dashboard.dividend.spreadToCn10yBp) }}</p>
-            <p class="mt-2 text-xs text-zinc-500">股息率 - 10Y 国债</p>
+            <p class="text-sm text-zinc-500">策略股债息差</p>
+            <p class="mt-3 text-3xl font-semibold text-blue-700">{{ formatBp(dashboard.dividend.signalSpreadToCn10yBp) }}</p>
+            <p class="mt-2 text-xs text-zinc-500">
+              最新 {{ formatBp(dashboard.dividend.spreadToCn10yBp) }} · 保守 {{ formatBp(dashboard.dividend.signalSpreadToCn10yBp) }}
+            </p>
           </div>
 
           <div class="metric-tile rounded-md border border-zinc-200 bg-white p-4 shadow-sm">
@@ -313,6 +520,14 @@ function annualBarWidth(value: number) {
             <div class="rounded-md border border-zinc-200 bg-white p-5 shadow-sm">
               <h3 class="text-lg font-semibold text-zinc-950">价格倒推</h3>
               <div class="mt-4 space-y-3">
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-sm text-zinc-500">攒股目标 {{ formatPercent(dashboard.dividend.accumulateTargetYield) }}</span>
+                  <span class="text-lg font-semibold text-zinc-950">{{ formatMoney(dashboard.dividend.priceForAccumulateTargetYield) }}</span>
+                </div>
+                <div class="flex items-center justify-between gap-4">
+                  <span class="text-sm text-zinc-500">深度目标 {{ formatPercent(dashboard.dividend.deepValueTargetYield) }}</span>
+                  <span class="text-lg font-semibold text-zinc-950">{{ formatMoney(dashboard.dividend.priceForDeepValueTargetYield) }}</span>
+                </div>
                 <div class="flex items-center justify-between gap-4">
                   <span class="text-sm text-zinc-500">达到 4% 股息率</span>
                   <span class="text-lg font-semibold text-zinc-950">{{ formatMoney(dashboard.dividend.priceForFourPercentYield) }}</span>

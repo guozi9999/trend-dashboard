@@ -145,3 +145,7 @@ vite.config.ts.timestamp-*
 # Local app data
 data/*.sqlite
 data/*.sqlite-*
+
+.env
+.env.*
+!.env.example

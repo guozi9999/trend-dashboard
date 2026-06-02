@@ -81,6 +81,73 @@ export interface StockYieldBand {
   summary: string
 }
 
+export interface RotationEtfCandidate {
+  code: string
+  name: string
+  quoteId: string
+  turnover: number | null
+}
+
+export interface RotationAsset {
+  code: string
+  name: string
+  quoteId: string
+  kind: 'index' | 'fund'
+  roc20: number | null
+  latestClose: number | null
+  latestDate: string | null
+  baseClose: number | null
+  baseDate: string | null
+  rank: number
+  tradeCode: string
+  tradeName: string
+  tradeQuoteId: string
+  tradeTurnover: number | null
+  etfCandidates: RotationEtfCandidate[]
+}
+
+export interface RotationStrategy {
+  lookbackDays: number
+  winner: RotationAsset | null
+  action: 'hold' | 'cash' | 'insufficient'
+  actionLabel: string
+  summary: string
+  assets: RotationAsset[]
+  calculation: string
+  fetchedAt: string
+}
+
+export interface MarketTemperatureRow {
+  rank: number
+  code: string
+  name: string
+  quoteId: string
+  changePercent: number | null
+  close: number | null
+  ma20: number | null
+  deviationPercent: number | null
+  volumeRatio: number | null
+  stateChangeDate: string | null
+  intervalChangePercent: number | null
+  rankChange: number
+}
+
+export interface MarketTemperatureBoard {
+  category: 'trend' | 'sector'
+  title: string
+  tradeDate: string | null
+  rows: MarketTemperatureRow[]
+}
+
+export interface MarketTemperature {
+  fetchedAt: string
+  source: string
+  summary: string
+  calculation: string
+  trend: MarketTemperatureBoard
+  sector: MarketTemperatureBoard
+}
+
 export interface DividendDashboard {
   stock: StockQuote
   treasury: {
@@ -99,6 +166,7 @@ export interface DividendDashboard {
     forecastDividendYield: number | null
     forecastGrowthRate: number | null
     forecastBasis: string
+    signalDividendYield: number | null
     fiveYearAverageCashPerShare: number | null
     fiveYearAverageYield: number | null
     fiveYearCashCagr: number | null
@@ -106,9 +174,14 @@ export interface DividendDashboard {
     nextDividendDate: string | null
     lastDividendDate: string | null
     spreadToCn10yBp: number | null
+    signalSpreadToCn10yBp: number | null
     riskPremiumTargetYield: number | null
+    accumulateTargetYield: number | null
+    deepValueTargetYield: number | null
     priceForFourPercentYield: number | null
     priceForFourPointFivePercentYield: number | null
+    priceForAccumulateTargetYield: number | null
+    priceForDeepValueTargetYield: number | null
     yieldBand: StockYieldBand
     calculation: {
       dividendYield: string
@@ -119,6 +192,8 @@ export interface DividendDashboard {
     }
     signal: DividendSignal
   }
+  rotation: RotationStrategy
+  marketTemperature: MarketTemperature
   cache: {
     fetchedAt: string
     fromCache: boolean

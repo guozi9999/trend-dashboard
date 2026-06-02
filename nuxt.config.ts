@@ -8,6 +8,8 @@ export default defineNuxtConfig({
     typeCheck: true
   },
   runtimeConfig: {
-    databasePath: process.env.TREND_DB_PATH || ''
+    databasePath: process.env.TREND_DB_PATH || '',
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   }
 })

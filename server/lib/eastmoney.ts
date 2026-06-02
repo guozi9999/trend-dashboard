@@ -1,6 +1,9 @@
-import { buildAnnualDividends, buildDividendForecast, buildStockYieldBand, calculateCagr, average, classifyDividendSignal, countContinuousDividendYears, round, toNumber } from '~~/shared/utils/dividend'
+import { buildAnnualDividends, buildDividendForecast, buildStockYieldBand, calculateCagr, average, calculateStrategyTargetYield, calculateYieldSpreadBp, chooseSignalDividendYield, classifyDividendSignal, countContinuousDividendYears, round, toNumber } from '~~/shared/utils/dividend'
 import type { AnnualPriceRange, DividendDashboard, DividendRecord, StockQuote, TreasuryYieldPoint } from '~~/shared/types/stock'
 import { loadStockSnapshot, saveStockSnapshot, saveTreasuryYields } from './db'
+import { buildRotationStrategy } from './rotation'
+import { buildMarketTemperature } from './marketTemperature'
+import { fetchJsonWithRetry } from './http'
 
 const EASTMONEY_SEARCH_TOKEN = 'D43BF722C8E33BDC906FB84D85E326E8'
 const EASTMONEY_TREASURY_TOKEN = '894050c76af8597a853f5b408b759f5d'
@@ -35,23 +38,20 @@ export async function buildDividendDashboard(
     throw createError({ statusCode: 400, statusMessage: '请输入股票名称或代码' })
   }
 
+  const cached = await loadStockSnapshot(normalizedQuery)
+  const cachedPayload = cached && isUsableCachedDashboard(cached.payload) ? cached.payload : null
+
   if (!options.refresh) {
-    const cached = loadStockSnapshot(normalizedQuery)
-    if (cached && isUsableCachedDashboard(cached.payload)) {
-      return {
-        ...cached.payload,
-        cache: {
-          ...cached.payload.cache,
-          fromCache: true
-        }
-      }
+    if (cachedPayload) {
+      return await buildCachedDashboard(cachedPayload)
     }
   }
 
-  const [resolvedStock, treasury] = await Promise.all([
-    resolveStock(normalizedQuery),
-    fetchTreasuryYields()
-  ])
+  try {
+    const [resolvedStock, treasury] = await Promise.all([
+      resolveStock(normalizedQuery),
+      fetchTreasuryYields()
+    ])
 
   const [quote, records] = await Promise.all([
     fetchQuote(resolvedStock.code),
@@ -86,13 +86,31 @@ export async function buildDividendDashboard(
   const forecastFiscalYear = latestAnnual?.fiscalYear ? latestAnnual.fiscalYear + 1 : null
   const dividendDates = getDividendDateSummary(recordsWithPaymentDates)
   const cn10y = treasury.latest.cn10y
-  const spreadToCn10yBp = latestAnnualYield !== null && cn10y !== null
-    ? round((latestAnnualYield - cn10y) * 100, 0)
-    : null
+  const signalDividendYield = chooseSignalDividendYield(latestAnnualYield, forecast.forecastDividendYield)
+  const spreadToCn10yBp = calculateYieldSpreadBp(latestAnnualYield, cn10y)
+  const signalSpreadToCn10yBp = calculateYieldSpreadBp(signalDividendYield, cn10y)
   const yieldBand = buildStockYieldBand(annual, latestAnnualYield)
-  const riskPremiumTargetYield = cn10y !== null ? round(cn10y + 1, 2) : null
+  const riskPremiumTargetYield = calculateStrategyTargetYield(cn10y, 0, 100)
+  const accumulateTargetYield = calculateStrategyTargetYield(cn10y, 4, 200)
+  const deepValueTargetYield = calculateStrategyTargetYield(cn10y, 4.5, 250)
   const priceForFourPercentYield = latestAnnualCashPerShare ? round(latestAnnualCashPerShare / 0.04, 2) : null
   const priceForFourPointFivePercentYield = latestAnnualCashPerShare ? round(latestAnnualCashPerShare / 0.045, 2) : null
+  const priceForAccumulateTargetYield = latestAnnualCashPerShare && accumulateTargetYield
+    ? round(latestAnnualCashPerShare / (accumulateTargetYield / 100), 2)
+    : null
+  const priceForDeepValueTargetYield = latestAnnualCashPerShare && deepValueTargetYield
+    ? round(latestAnnualCashPerShare / (deepValueTargetYield / 100), 2)
+    : null
+    const [rotationResult, marketTemperatureResult] = await Promise.allSettled([
+      buildRotationStrategy(),
+      buildMarketTemperature({ refresh: options.refresh })
+    ])
+    const rotation = rotationResult.status === 'fulfilled'
+      ? rotationResult.value
+      : cachedPayload?.rotation ?? buildUnavailableRotation()
+    const marketTemperature = marketTemperatureResult.status === 'fulfilled'
+      ? marketTemperatureResult.value
+      : cachedPayload?.marketTemperature ?? buildUnavailableMarketTemperature()
 
   const dashboard: DividendDashboard = {
     stock,
@@ -108,6 +126,7 @@ export async function buildDividendDashboard(
       latestAnnualYield,
       forecastFiscalYear,
       ...forecast,
+      signalDividendYield,
       fiveYearAverageCashPerShare,
       fiveYearAverageYield,
       fiveYearCashCagr: cagrBase,
@@ -115,19 +134,26 @@ export async function buildDividendDashboard(
       nextDividendDate: dividendDates.nextDividendDate,
       lastDividendDate: dividendDates.lastDividendDate,
       spreadToCn10yBp,
+      signalSpreadToCn10yBp,
       riskPremiumTargetYield,
+      accumulateTargetYield,
+      deepValueTargetYield,
       priceForFourPercentYield,
       priceForFourPointFivePercentYield,
+      priceForAccumulateTargetYield,
+      priceForDeepValueTargetYield,
       yieldBand,
       calculation: {
         dividendYield: '股息率 = 年度每股现金分红 / 当前股价 x 100%。',
         forecastDividendYield: '预测股息率 = 预测年度每股现金分红 / 当前股价 x 100%。',
-        spreadToCn10y: '股债息差 = 股息率 - 中国10年期国债收益率；页面以 BP 显示，1% = 100BP。',
+        spreadToCn10y: '股债息差 = 股息率百分数 - 中国10年期国债收益率百分数，再 x 100 转成 BP；策略信号使用最新年度股息率与预测股息率中更保守的一个。',
         annualYieldRange: '年度最高股息率 = 年度每股分红 / 年内最低股价；年度最低股息率 = 年度每股分红 / 年内最高股价。',
-        signalRule: '4.5%+且息差250BP+为深度股息率区间；4%+且息差200BP+为攒股观察区间；高于10年国债100BP+为合理补偿。'
+        signalRule: '深度区间需同时满足股息率4.5%+和息差250BP+；攒股观察需同时满足股息率4%+和息差200BP+；高于10年国债100BP+为基础风险补偿。'
       },
-      signal: classifyDividendSignal(latestAnnualYield, cn10y, spreadToCn10yBp, yieldBand)
+      signal: classifyDividendSignal(signalDividendYield, cn10y, signalSpreadToCn10yBp, yieldBand)
     },
+    rotation,
+    marketTemperature,
     cache: {
       fetchedAt: new Date().toISOString(),
       fromCache: false
@@ -144,7 +170,7 @@ export async function buildDividendDashboard(
     ]
   }
 
-  saveStockSnapshot({
+  await saveStockSnapshot({
     code: dashboard.stock.code,
     name: dashboard.stock.name,
     secucode: dashboard.stock.secucode,
@@ -153,9 +179,74 @@ export async function buildDividendDashboard(
     json: dashboard
   })
 
-  saveTreasuryYields(treasury.history, dashboard.cache.fetchedAt)
+  await saveTreasuryYields(treasury.history, dashboard.cache.fetchedAt)
 
-  return dashboard
+    return dashboard
+  } catch (error) {
+    if (cachedPayload) {
+      return await buildCachedDashboard(cachedPayload)
+    }
+
+    throw error
+  }
+}
+
+async function buildCachedDashboard(payload: DividendDashboard): Promise<DividendDashboard> {
+  const [rotationResult, marketTemperatureResult] = await Promise.allSettled([
+    buildRotationStrategy(),
+    buildMarketTemperature()
+  ])
+  const rotation = rotationResult.status === 'fulfilled'
+    ? rotationResult.value
+    : payload.rotation ?? buildUnavailableRotation()
+  const marketTemperature = marketTemperatureResult.status === 'fulfilled'
+    ? marketTemperatureResult.value
+    : payload.marketTemperature ?? buildUnavailableMarketTemperature()
+
+  return {
+    ...payload,
+    rotation,
+    marketTemperature,
+    cache: {
+      ...payload.cache,
+      fromCache: true
+    }
+  }
+}
+
+function buildUnavailableRotation(): DividendDashboard['rotation'] {
+  return {
+    lookbackDays: 20,
+    winner: null,
+    action: 'insufficient',
+    actionLabel: '数据不足',
+    summary: '轮动策略数据源暂时不可用，本次个股查询不受影响。',
+    assets: [],
+    calculation: 'ROC(20) = (最新收盘价 - 20 个交易日前收盘价) / 20 个交易日前收盘价 x 100；数据源恢复后自动显示轮动排序。',
+    fetchedAt: new Date().toISOString()
+  }
+}
+
+function buildUnavailableMarketTemperature(): DividendDashboard['marketTemperature'] {
+  const fetchedAt = new Date().toISOString()
+  return {
+    fetchedAt,
+    source: '东方财富日线行情，本地 SQLite 快照表',
+    summary: '市场温度数据暂时不可用，本次个股查询不受影响。',
+    calculation: '20日均线为最近20个交易日收盘价均值；数据源恢复或本地快照可用后自动显示。',
+    trend: {
+      category: 'trend',
+      title: '鱼盆趋势模型',
+      tradeDate: null,
+      rows: []
+    },
+    sector: {
+      category: 'sector',
+      title: '板块轮动',
+      tradeDate: null,
+      rows: []
+    }
+  }
 }
 
 function isUsableCachedDashboard(value: unknown): value is DividendDashboard {
@@ -166,7 +257,16 @@ function isUsableCachedDashboard(value: unknown): value is DividendDashboard {
     maybe?.dividend?.calculation &&
     maybe.dividend.yieldBand &&
     'forecastFiscalYear' in maybe.dividend &&
+    'signalDividendYield' in maybe.dividend &&
+    'signalSpreadToCn10yBp' in maybe.dividend &&
+    'accumulateTargetYield' in maybe.dividend &&
+    'priceForAccumulateTargetYield' in maybe.dividend &&
+    maybe.rotation &&
+    maybe.marketTemperature &&
     Array.isArray(maybe.dividend.annual) &&
+    maybe.dividend.annual.length > 0 &&
+    Array.isArray(maybe.dividend.records) &&
+    maybe.dividend.records.length > 0 &&
     maybe.dividend.annual.every((item) => 'highestDividendYield' in item && 'lowestDividendYield' in item)
   )
 }
@@ -288,6 +388,15 @@ async function fetchDividendPaymentDates(secucode: string): Promise<Array<{
 }
 
 async function fetchAnnualPriceRanges(quoteId: string): Promise<Map<number, AnnualPriceRange>> {
+  const eastmoneyRanges = await fetchEastmoneyAnnualPriceRanges(quoteId).catch(() => new Map<number, AnnualPriceRange>())
+  if (eastmoneyRanges.size) {
+    return eastmoneyRanges
+  }
+
+  return await fetchYahooAnnualPriceRanges(quoteId)
+}
+
+async function fetchEastmoneyAnnualPriceRanges(quoteId: string): Promise<Map<number, AnnualPriceRange>> {
   const url = new URL('https://push2his.eastmoney.com/api/qt/stock/kline/get')
   url.searchParams.set('secid', quoteId)
   url.searchParams.set('fields1', 'f1,f2,f3,f4,f5,f6')
@@ -336,6 +445,90 @@ async function fetchAnnualPriceRanges(quoteId: string): Promise<Map<number, Annu
   }
 
   return ranges
+}
+
+async function fetchYahooAnnualPriceRanges(quoteId: string): Promise<Map<number, AnnualPriceRange>> {
+  const symbol = toYahooSymbol(quoteId)
+  if (!symbol) {
+    return new Map<number, AnnualPriceRange>()
+  }
+
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`)
+  url.searchParams.set('period1', String(Math.floor(Date.UTC(2000, 0, 1) / 1000)))
+  url.searchParams.set('period2', String(Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 1000)))
+  url.searchParams.set('interval', '1d')
+  url.searchParams.set('events', 'history')
+
+  const response = await fetchJson<{
+    chart?: {
+      result?: Array<{
+        timestamp?: number[]
+        indicators?: {
+          quote?: Array<{
+            high?: Array<number | null>
+            low?: Array<number | null>
+          }>
+        }
+      }>
+    }
+  }>(url, 'https://finance.yahoo.com/')
+  const result = response.chart?.result?.[0]
+  const timestamps = result?.timestamp ?? []
+  const highs = result?.indicators?.quote?.[0]?.high ?? []
+  const lows = result?.indicators?.quote?.[0]?.low ?? []
+  const ranges = new Map<number, AnnualPriceRange>()
+
+  for (let index = 0; index < timestamps.length; index += 1) {
+    const timestamp = timestamps[index]
+    const date = timestamp ? formatDateInShanghai(new Date(timestamp * 1000)) : null
+    const fiscalYear = date ? Number(date.slice(0, 4)) : null
+    const highestPrice = toNumber(highs[index])
+    const lowestPrice = toNumber(lows[index])
+
+    if (!date || !Number.isInteger(fiscalYear) || highestPrice === null || lowestPrice === null) {
+      continue
+    }
+
+    const year = fiscalYear as number
+    const current = ranges.get(year) ?? {
+      fiscalYear: year,
+      highestPrice: null,
+      highestPriceDate: null,
+      lowestPrice: null,
+      lowestPriceDate: null
+    }
+
+    if (current.highestPrice === null || highestPrice > current.highestPrice) {
+      current.highestPrice = round(highestPrice, 2)
+      current.highestPriceDate = date
+    }
+
+    if (current.lowestPrice === null || lowestPrice < current.lowestPrice) {
+      current.lowestPrice = round(lowestPrice, 2)
+      current.lowestPriceDate = date
+    }
+
+    ranges.set(year, current)
+  }
+
+  return ranges
+}
+
+function toYahooSymbol(quoteId: string) {
+  const [market, code] = quoteId.split('.')
+  if (!code) {
+    return null
+  }
+
+  if (market === '1') {
+    return `${code}.SS`
+  }
+
+  if (market === '0') {
+    return `${code}.SZ`
+  }
+
+  return null
 }
 
 async function fetchTreasuryYields(): Promise<{ latest: TreasuryYieldPoint, history: TreasuryYieldPoint[] }> {
@@ -416,19 +609,22 @@ function formatYmd(date: Date) {
   return `${year}${month}${day}`
 }
 
+function formatDateInShanghai(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date)
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+
+  return year && month && day ? `${year}-${month}-${day}` : date.toISOString().slice(0, 10)
+}
+
 async function fetchJson<T>(url: URL, referer: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: {
-      Referer: referer,
-      'User-Agent': 'Mozilla/5.0 trend-dashboard'
-    }
-  })
-
-  if (!response.ok) {
-    throw createError({ statusCode: 502, statusMessage: `数据源请求失败：${response.status}` })
-  }
-
-  return await response.json() as T
+  return await fetchJsonWithRetry<T>(url, referer, '数据源')
 }
 
 function nullableString(value: unknown): string | null {

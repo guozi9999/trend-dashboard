@@ -119,6 +119,39 @@ export function buildDividendForecast(
   }
 }
 
+export function calculateYieldSpreadBp(
+  dividendYieldPercent: number | null,
+  benchmarkYieldPercent: number | null
+): number | null {
+  if (dividendYieldPercent === null || benchmarkYieldPercent === null) {
+    return null
+  }
+
+  return round((dividendYieldPercent - benchmarkYieldPercent) * 100, 0)
+}
+
+export function calculateStrategyTargetYield(
+  benchmarkYieldPercent: number | null,
+  minimumDividendYieldPercent: number,
+  minimumSpreadBp: number
+): number | null {
+  if (benchmarkYieldPercent === null) {
+    return null
+  }
+
+  return round(Math.max(minimumDividendYieldPercent, benchmarkYieldPercent + minimumSpreadBp / 100), 2)
+}
+
+export function chooseSignalDividendYield(
+  latestAnnualYield: number | null,
+  forecastDividendYield: number | null
+): number | null {
+  const candidates = [latestAnnualYield, forecastDividendYield]
+    .filter((value): value is number => value !== null && Number.isFinite(value))
+
+  return candidates.length ? Math.min(...candidates) : null
+}
+
 export function countContinuousDividendYears(annual: AnnualDividend[]): number {
   if (!annual.length) {
     return 0
@@ -140,12 +173,12 @@ export function countContinuousDividendYears(annual: AnnualDividend[]): number {
 }
 
 export function classifyDividendSignal(
-  latestAnnualYield: number | null,
+  signalDividendYield: number | null,
   cn10yYield: number | null,
-  spreadBp: number | null,
+  spreadBp = calculateYieldSpreadBp(signalDividendYield, cn10yYield),
   yieldBand?: StockYieldBand
 ): DividendSignal {
-  if (latestAnnualYield === null || cn10yYield === null || spreadBp === null) {
+  if (signalDividendYield === null || cn10yYield === null || spreadBp === null) {
     return {
       level: 'insufficient',
       label: '数据不足',
@@ -154,7 +187,7 @@ export function classifyDividendSignal(
     }
   }
 
-  if (latestAnnualYield >= 4.5 && spreadBp >= 250) {
+  if (signalDividendYield >= 4.5 && spreadBp >= 250) {
     return {
       level: 'deep_value',
       label: '深度股息率区间',
@@ -163,7 +196,7 @@ export function classifyDividendSignal(
     }
   }
 
-  if (latestAnnualYield >= 4 && spreadBp >= 200) {
+  if (signalDividendYield >= 4 && spreadBp >= 200) {
     return {
       level: 'accumulate',
       label: '攒股观察区间',
@@ -172,10 +205,10 @@ export function classifyDividendSignal(
     }
   }
 
-  if (latestAnnualYield >= cn10yYield + 1) {
+  if (spreadBp >= 100) {
     const misses: string[] = []
-    if (latestAnnualYield < 4) {
-      misses.push(`股息率 ${latestAnnualYield.toFixed(2)}% 低于 4% 攒股线`)
+    if (signalDividendYield < 4) {
+      misses.push(`策略股息率 ${signalDividendYield.toFixed(2)}% 低于 4% 攒股线`)
     }
     if (spreadBp < 200) {
       misses.push(`息差 ${spreadBp.toFixed(0)}BP 低于 200BP 攒股线`)
