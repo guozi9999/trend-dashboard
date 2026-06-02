@@ -9,6 +9,7 @@
     "lint": "nuxt typecheck",
     "postinstall": "nuxt prepare",
     "preview": "nuxt preview",
+    "start": "node .output/server/index.mjs",
     "test": "vitest run"
   },
   "dependencies": {
