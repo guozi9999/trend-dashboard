@@ -3,7 +3,7 @@ services:
     name: trend-dashboard
     runtime: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm build
     startCommand: pnpm start
     healthCheckPath: /api/health
     envVars:
