@@ -2,6 +2,7 @@
   "name": "trend-dashboard",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.1.2",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev --host 127.0.0.1",
