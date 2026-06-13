@@ -268,7 +268,7 @@ function annualBarWidth(value: number) {
                 <h4 class="font-semibold text-zinc-950 text-sm sm:text-base">{{ dashboard.marketTemperature.trend.title }}</h4>
                 <UBadge color="gray" variant="soft" size="sm">{{ marketTrendRows.length }} 项</UBadge>
               </div>
-              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 scrollbar-thin">
+              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 market-table-scroll">
                 <table class="min-w-[700px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
                   <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
                     <tr>
@@ -309,7 +309,7 @@ function annualBarWidth(value: number) {
                 <h4 class="font-semibold text-zinc-950 text-sm sm:text-base">{{ dashboard.marketTemperature.sector.title }}</h4>
                 <UBadge color="gray" variant="soft" size="sm">{{ marketSectorRows.length }} 项</UBadge>
               </div>
-              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 scrollbar-thin">
+              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 market-table-scroll">
                 <table class="min-w-[700px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
                   <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
                     <tr>
