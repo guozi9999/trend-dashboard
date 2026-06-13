@@ -2,33 +2,13 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { MarketTemperatureBoard, MarketTemperatureRow } from '~~/shared/types/stock'
 
 let database: Database.Database | null = null
-let supabase: SupabaseClient | null = null
 
 function defaultDatabasePath() {
   const root = fileURLToPath(new URL('../..', import.meta.url))
   return join(root, 'data', 'trend-dashboard.sqlite')
-}
-
-function getSupabase() {
-  const config = useRuntimeConfig()
-  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
-    return null
-  }
-
-  if (!supabase) {
-    supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      }
-    })
-  }
-
-  return supabase
 }
 
 export function getDb() {
@@ -95,28 +75,8 @@ function migrate(db: Database.Database) {
   `)
 }
 
-export async function loadStockSnapshot(query: string) {
+export function loadStockSnapshot(query: string) {
   const normalizedQuery = query.trim()
-  const client = getSupabase()
-
-  if (client) {
-    const { data, error } = await client
-      .from('stock_snapshots')
-      .select('fetched_at,payload')
-      .or(`query.eq.${escapeFilterValue(normalizedQuery)},code.eq.${escapeFilterValue(normalizedQuery)},name.eq.${escapeFilterValue(normalizedQuery)},secucode.eq.${escapeFilterValue(normalizedQuery)},secucode.eq.${escapeFilterValue(normalizedQuery.toUpperCase())}`)
-      .order('fetched_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (error || !data) {
-      return null
-    }
-
-    return {
-      fetchedAt: data.fetched_at as string,
-      payload: data.payload as unknown
-    }
-  }
 
   const row = getDb()
     .prepare(`
@@ -149,7 +109,7 @@ export async function loadStockSnapshot(query: string) {
   }
 }
 
-export async function saveStockSnapshot(payload: {
+export function saveStockSnapshot(payload: {
   code: string
   name: string
   secucode: string
@@ -157,27 +117,6 @@ export async function saveStockSnapshot(payload: {
   fetchedAt: string
   json: unknown
 }) {
-  const client = getSupabase()
-
-  if (client) {
-    const { error } = await client
-      .from('stock_snapshots')
-      .upsert({
-        code: payload.code,
-        name: payload.name,
-        secucode: payload.secucode,
-        query: payload.query,
-        fetched_at: payload.fetchedAt,
-        payload: payload.json
-      }, { onConflict: 'code' })
-
-    if (error) {
-      console.warn(`Supabase 写入股票快照失败：${error.message}`)
-    }
-
-    return
-  }
-
   getDb()
     .prepare(`
       INSERT INTO stock_snapshots (code, name, secucode, query, fetched_at, payload)
@@ -195,7 +134,7 @@ export async function saveStockSnapshot(payload: {
     })
 }
 
-export async function saveTreasuryYields(rows: Array<{
+export function saveTreasuryYields(rows: Array<{
   date: string
   cn2y: number | null
   cn5y: number | null
@@ -203,28 +142,6 @@ export async function saveTreasuryYields(rows: Array<{
   cn30y: number | null
   us10y: number | null
 }>, fetchedAt: string) {
-  const client = getSupabase()
-
-  if (client) {
-    const { error } = await client
-      .from('treasury_yields')
-      .upsert(rows.map((row) => ({
-        date: row.date,
-        cn_2y: row.cn2y,
-        cn_5y: row.cn5y,
-        cn_10y: row.cn10y,
-        cn_30y: row.cn30y,
-        us_10y: row.us10y,
-        fetched_at: fetchedAt
-      })), { onConflict: 'date' })
-
-    if (error) {
-      console.warn(`Supabase 写入国债数据失败：${error.message}`)
-    }
-
-    return
-  }
-
   const statement = getDb().prepare(`
     INSERT INTO treasury_yields (date, cn_2y, cn_5y, cn_10y, cn_30y, us_10y, fetched_at)
     VALUES (@date, @cn2y, @cn5y, @cn10y, @cn30y, @us10y, @fetchedAt)
@@ -246,50 +163,7 @@ export async function saveTreasuryYields(rows: Array<{
   insertMany(rows)
 }
 
-export async function loadMarketTemperatureBoards(): Promise<Record<string, MarketTemperatureBoard>> {
-  const client = getSupabase()
-
-  if (client) {
-    const { data: latestRows, error: latestError } = await client
-      .from('market_temperature_rows')
-      .select('category,trade_date')
-      .order('trade_date', { ascending: false })
-
-    if (latestError || !latestRows?.length) {
-      return {}
-    }
-
-    const latestByCategory = new Map<string, string>()
-    for (const row of latestRows as Array<{ category: string, trade_date: string }>) {
-      if (!latestByCategory.has(row.category)) {
-        latestByCategory.set(row.category, row.trade_date)
-      }
-    }
-
-    const boards: Record<string, MarketTemperatureBoard> = {}
-    for (const [category, tradeDate] of latestByCategory.entries()) {
-      const { data: rows, error } = await client
-        .from('market_temperature_rows')
-        .select('rank,code,name,quote_id,change_percent,close,ma20,deviation_percent,volume_ratio,state_change_date,interval_change_percent,rank_change')
-        .eq('category', category)
-        .eq('trade_date', tradeDate)
-        .order('rank', { ascending: true })
-
-      if (error) {
-        continue
-      }
-
-      boards[category] = {
-        category: category as MarketTemperatureBoard['category'],
-        title: '',
-        tradeDate,
-        rows: (rows ?? []).map(mapMarketTemperatureRow)
-      }
-    }
-
-    return boards
-  }
-
+export function loadMarketTemperatureBoards(): Record<string, MarketTemperatureBoard> {
   const latestRows = getDb()
     .prepare(`
       SELECT category, MAX(trade_date) AS tradeDate
@@ -333,36 +207,7 @@ export async function loadMarketTemperatureBoards(): Promise<Record<string, Mark
   return boards
 }
 
-export async function loadPreviousMarketTemperatureRanks(category: string, beforeTradeDate: string) {
-  const client = getSupabase()
-
-  if (client) {
-    const { data: previous, error: previousError } = await client
-      .from('market_temperature_rows')
-      .select('trade_date')
-      .eq('category', category)
-      .lt('trade_date', beforeTradeDate)
-      .order('trade_date', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (previousError || !previous?.trade_date) {
-      return new Map<string, number>()
-    }
-
-    const { data: rows, error } = await client
-      .from('market_temperature_rows')
-      .select('code,rank')
-      .eq('category', category)
-      .eq('trade_date', previous.trade_date)
-
-    if (error) {
-      return new Map<string, number>()
-    }
-
-    return new Map((rows ?? []).map((row) => [String(row.code), Number(row.rank)]))
-  }
-
+export function loadPreviousMarketTemperatureRanks(category: string, beforeTradeDate: string) {
   const previous = getDb()
     .prepare(`
       SELECT MAX(trade_date) AS tradeDate
@@ -388,40 +233,11 @@ export async function loadPreviousMarketTemperatureRanks(category: string, befor
   return new Map(rows.map((row) => [row.code, row.rank]))
 }
 
-export async function saveMarketTemperatureBoard(
+export function saveMarketTemperatureBoard(
   board: MarketTemperatureBoard,
   fetchedAt: string
 ) {
   if (!board.tradeDate) {
-    return
-  }
-
-  const client = getSupabase()
-  if (client) {
-    const { error } = await client
-      .from('market_temperature_rows')
-      .upsert(board.rows.map((row) => ({
-        category: board.category,
-        trade_date: board.tradeDate,
-        code: row.code,
-        name: row.name,
-        quote_id: row.quoteId,
-        rank: row.rank,
-        change_percent: row.changePercent,
-        close: row.close,
-        ma20: row.ma20,
-        deviation_percent: row.deviationPercent,
-        volume_ratio: row.volumeRatio,
-        state_change_date: row.stateChangeDate,
-        interval_change_percent: row.intervalChangePercent,
-        rank_change: row.rankChange,
-        fetched_at: fetchedAt
-      })), { onConflict: 'category,trade_date,code' })
-
-    if (error) {
-      console.warn(`Supabase 写入市场温度失败：${error.message}`)
-    }
-
     return
   }
 
@@ -500,25 +316,16 @@ function mapMarketTemperatureRow(row: Record<string, unknown>): MarketTemperatur
     ma20: nullableNumber(row.ma20),
     deviationPercent: nullableNumber(row.deviation_percent),
     volumeRatio: nullableNumber(row.volume_ratio),
-    stateChangeDate: nullableString(row.state_change_date),
+    stateChangeDate: row.state_change_date ? String(row.state_change_date) : null,
     intervalChangePercent: nullableNumber(row.interval_change_percent),
     rankChange: Number(row.rank_change ?? 0)
   }
 }
 
 function nullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue : null
+  return value === null || value === undefined ? null : Number(value)
 }
 
-function nullableString(value: unknown): string | null {
-  return value === null || value === undefined || value === '' ? null : String(value)
-}
-
-function escapeFilterValue(value: string) {
-  return value.replaceAll('\\', '\\\\').replaceAll(',', '\\,').replaceAll(')', '\\)')
+function escapeFilterValue(value: string): string {
+  return value.replace(/[,().]/g, (char) => encodeURIComponent(char))
 }
