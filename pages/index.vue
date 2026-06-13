@@ -204,17 +204,17 @@ function annualBarWidth(value: number) {
             </div>
           </div>
 
-          <div class="mt-4 sm:mt-5 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div class="mt-4 sm:mt-5 overflow-x-auto market-table-scroll rounded-md border border-zinc-100">
             <table class="min-w-[600px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
-              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 sticky top-0">
                 <tr>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">排名</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">轮动品种</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">20日ROC</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">最新收盘</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">20日前收盘</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">操作标的</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">ETF成交额</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">轮动品种</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">20日ROC</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最新收盘</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">20日前收盘</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">操作标的</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">ETF成交额</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-zinc-100">
@@ -223,18 +223,18 @@ function annualBarWidth(value: number) {
                   :key="item.code"
                   class="hover:bg-zinc-50"
                 >
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium text-zinc-900">{{ item.rank }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-900">{{ item.name }} {{ item.code }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 font-medium text-zinc-900">{{ item.rank }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-900">{{ item.name }} {{ item.code }}</td>
                   <td
-                    class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-semibold"
+                    class="whitespace-nowrap px-3 py-2.5 font-semibold"
                     :class="(item.roc20 ?? 0) > 0 ? 'text-emerald-700' : 'text-zinc-700'"
                   >
                     {{ formatPercent(item.roc20) }}
                   </td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.latestClose, 2) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.baseClose, 2) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ item.tradeName }} {{ item.tradeCode }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatTurnover(item.tradeTurnover) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.latestClose, 2) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.baseClose, 2) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ item.tradeName }} {{ item.tradeCode }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatTurnover(item.tradeTurnover) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -588,30 +588,30 @@ function annualBarWidth(value: number) {
             <UBadge color="gray" variant="soft" size="sm">{{ annualRows.length }} 年</UBadge>
           </div>
 
-          <div class="mt-4 sm:mt-5 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div class="mt-4 sm:mt-5 overflow-x-auto market-table-scroll rounded-md border border-zinc-100">
             <table class="min-w-[700px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
-              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 sticky top-0">
                 <tr>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">年度</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">每股分红</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">年内最低价</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">最低价日期</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">最高股息率</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">年内最高价</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">最高价日期</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">最低股息率</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">年度</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">每股分红</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">年内最低价</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最低价日期</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最高股息率</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">年内最高价</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最高价日期</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">最低股息率</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-zinc-100">
                 <tr v-for="item in annualRows" :key="`range-${item.fiscalYear}`" class="hover:bg-zinc-50">
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium text-zinc-900">{{ item.fiscalYear }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.cashPerShare, 4) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatMoney(item.lowestPrice) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(item.lowestPriceDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium text-emerald-700">{{ formatPercent(item.highestDividendYield) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatMoney(item.highestPrice) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(item.highestPriceDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatPercent(item.lowestDividendYield) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 font-medium text-zinc-900">{{ item.fiscalYear }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.cashPerShare, 4) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatMoney(item.lowestPrice) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(item.lowestPriceDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 font-medium text-emerald-700">{{ formatPercent(item.highestDividendYield) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatMoney(item.highestPrice) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(item.highestPriceDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatPercent(item.lowestDividendYield) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -628,34 +628,34 @@ function annualBarWidth(value: number) {
             <UBadge color="gray" variant="soft" size="sm">{{ dividendRows.length }} 条</UBadge>
           </div>
 
-          <div class="mt-4 sm:mt-5 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+          <div class="mt-4 sm:mt-5 overflow-x-auto market-table-scroll rounded-md border border-zinc-100">
             <table class="min-w-[800px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
-              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+              <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 sticky top-0">
                 <tr>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">报告期</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">方案</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">现金/10股</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">每股现金</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">股息率</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">公告日</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">登记日</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">除息日</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">派息日</th>
-                  <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">状态</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">报告期</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">方案</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">现金/10股</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">每股现金</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">股息率</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">公告日</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">登记日</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">除息日</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">派息日</th>
+                  <th class="whitespace-nowrap px-3 py-3 font-medium">状态</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-zinc-100">
                 <tr v-for="row in dividendRows" :key="`${row.reportDate}-${row.planProfile}`" class="hover:bg-zinc-50">
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatDate(row.reportDate) }}</td>
-                  <td class="min-w-48 px-2 sm:px-3 py-2 sm:py-3 text-zinc-900">{{ row.planProfile || '-' }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(row.pretaxBonusRmbPer10, 3) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(row.cashPerShare, 4) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatPercent(row.dividendYieldAtAnnouncement) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(row.noticeDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(row.equityRecordDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(row.exDividendDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(row.payCashDate) }}</td>
-                  <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ row.assignProgress || '-' }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatDate(row.reportDate) }}</td>
+                  <td class="min-w-48 px-3 py-2.5 text-zinc-900">{{ row.planProfile || '-' }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(row.pretaxBonusRmbPer10, 3) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(row.cashPerShare, 4) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatPercent(row.dividendYieldAtAnnouncement) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(row.noticeDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(row.equityRecordDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(row.exDividendDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(row.payCashDate) }}</td>
+                  <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ row.assignProgress || '-' }}</td>
                 </tr>
               </tbody>
             </table>
