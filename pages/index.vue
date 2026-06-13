@@ -142,6 +142,22 @@ function annualBarWidth(value: number) {
 
   return `${Math.max((value / maxAnnualCash.value) * 100, 4)}%`
 }
+
+// Add scroll indicator logic for market temperature tables
+onMounted(() => {
+  nextTick(() => {
+    const scrollContainers = document.querySelectorAll('.market-table-scroll')
+    scrollContainers.forEach((container) => {
+      const checkScroll = () => {
+        const isScrolledRight = container.scrollLeft + container.clientWidth >= container.scrollWidth - 10
+        container.classList.toggle('scrolled-right', isScrolledRight)
+      }
+      
+      container.addEventListener('scroll', checkScroll)
+      checkScroll() // Initial check
+    })
+  })
+})
 </script>
 
 <template>
