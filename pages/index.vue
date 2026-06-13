@@ -142,22 +142,6 @@ function annualBarWidth(value: number) {
 
   return `${Math.max((value / maxAnnualCash.value) * 100, 4)}%`
 }
-
-// Add scroll indicator logic for market temperature tables
-onMounted(() => {
-  nextTick(() => {
-    const scrollContainers = document.querySelectorAll('.market-table-scroll')
-    scrollContainers.forEach((container) => {
-      const checkScroll = () => {
-        const isScrolledRight = container.scrollLeft + container.clientWidth >= container.scrollWidth - 10
-        container.classList.toggle('scrolled-right', isScrolledRight)
-      }
-      
-      container.addEventListener('scroll', checkScroll)
-      checkScroll() // Initial check
-    })
-  })
-})
 </script>
 
 <template>
@@ -278,83 +262,85 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="mt-4 sm:mt-5 grid gap-4 sm:gap-6 xl:grid-cols-2">
+          <div class="mt-4 sm:mt-5 space-y-6">
+            <!-- 鱼盆趋势模型 -->
             <div>
               <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                 <h4 class="font-semibold text-zinc-950 text-sm sm:text-base">{{ dashboard.marketTemperature.trend.title }}</h4>
                 <UBadge color="gray" variant="soft" size="sm">{{ marketTrendRows.length }} 项</UBadge>
               </div>
-              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 market-table-scroll">
-                <table class="min-w-[700px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
-                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+              <div class="mt-3 overflow-x-auto market-table-scroll rounded-md border border-zinc-100">
+                <table class="min-w-[900px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
+                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 sticky top-0">
                     <tr>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">排名</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">代码</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">名称</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">涨幅</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">现价</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">20日均线</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">偏离率</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">量比</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">状态转变</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">区间涨幅</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">排名变化</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">代码</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">名称</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">现价</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">20日均线</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">偏离率</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">量比</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">状态转变</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">区间涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名变化</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-zinc-100">
                     <tr v-for="item in marketTrendRows" :key="`trend-${item.code}`" class="hover:bg-zinc-50">
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium text-zinc-900">{{ item.rank }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ item.code }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-cyan-700">{{ item.name }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 font-medium text-zinc-900">{{ item.rank }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ item.code }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-cyan-700">{{ item.name }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
+            <!-- 板块轮动 -->
             <div>
               <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                 <h4 class="font-semibold text-zinc-950 text-sm sm:text-base">{{ dashboard.marketTemperature.sector.title }}</h4>
                 <UBadge color="gray" variant="soft" size="sm">{{ marketSectorRows.length }} 项</UBadge>
               </div>
-              <div class="mt-3 overflow-x-auto overflow-y-auto max-h-[60vh] -mx-4 sm:mx-0 px-4 sm:px-0 market-table-scroll">
-                <table class="min-w-[700px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
-                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500">
+              <div class="mt-3 overflow-x-auto market-table-scroll rounded-md border border-zinc-100">
+                <table class="min-w-[900px] w-full divide-y divide-zinc-200 text-left text-xs sm:text-sm">
+                  <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 sticky top-0">
                     <tr>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">排名</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">代码</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">名称</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">涨幅</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">现价</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">20日均线</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">偏离率</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">量比</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">状态转变</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">区间涨幅</th>
-                      <th class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium">排名变化</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">代码</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">名称</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">现价</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">20日均线</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">偏离率</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">量比</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">状态转变</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">区间涨幅</th>
+                      <th class="whitespace-nowrap px-3 py-3 font-medium">排名变化</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-zinc-100">
                     <tr v-for="item in marketSectorRows" :key="`sector-${item.code}`" class="hover:bg-zinc-50">
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium text-zinc-900">{{ item.rank }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ item.code }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-cyan-700">{{ item.name }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
-                      <td class="whitespace-nowrap px-2 sm:px-3 py-2 sm:py-3 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 font-medium text-zinc-900">{{ item.rank }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ item.code }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-cyan-700">{{ item.name }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5" :class="(item.changePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.changePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.close, item.close && item.close < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.ma20, item.ma20 && item.ma20 < 100 ? 3 : 0) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 font-medium" :class="(item.deviationPercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.deviationPercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatNumber(item.volumeRatio, 2) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-500">{{ formatDate(item.stateChangeDate) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5" :class="(item.intervalChangePercent ?? 0) >= 0 ? 'text-red-700' : 'text-emerald-700'">{{ formatPercent(item.intervalChangePercent) }}</td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-zinc-700">{{ formatRankChange(item.rankChange) }}</td>
                     </tr>
                   </tbody>
                 </table>
