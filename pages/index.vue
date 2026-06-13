@@ -170,14 +170,29 @@ function annualBarWidth(value: number) {
                 {{ dashboard.rotation.summary }}
               </p>
             </div>
-            <UBadge
-              :color="dashboard.rotation.action === 'hold' ? 'emerald' : dashboard.rotation.action === 'cash' ? 'amber' : 'gray'"
-              size="lg"
+            <div class="flex items-center gap-2">
+              <UBadge
+                :color="dashboard.rotation.action === 'hold' ? 'emerald' : dashboard.rotation.action === 'cash' ? 'amber' : 'gray'"
+                size="lg"
+                variant="soft"
+              >
+                {{ dashboard.rotation.actionLabel }}
+              </UBadge>
+            </div>
+          </div>
+
+          <div class="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+            <span class="text-xs text-zinc-500">更新时间：{{ formatDateTime(dashboard.cache.fetchedAt) }}</span>
+            <UButton
+              size="xs"
+              color="gray"
               variant="soft"
-              class="self-start"
+              icon="i-heroicons-arrow-path"
+              :loading="pending"
+              @click="runSearch(searchText, true)"
             >
-              {{ dashboard.rotation.actionLabel }}
-            </UBadge>
+              刷新数据
+            </UButton>
           </div>
 
           <div class="mt-4 sm:mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
@@ -262,8 +277,22 @@ function annualBarWidth(value: number) {
             </div>
           </div>
 
+          <div class="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
+            <span class="text-xs text-zinc-500">更新时间：{{ formatDateTime(dashboard.cache.fetchedAt) }}</span>
+            <UButton
+              size="xs"
+              color="gray"
+              variant="soft"
+              icon="i-heroicons-arrow-path"
+              :loading="pending"
+              @click="runSearch(searchText, true)"
+            >
+              刷新数据
+            </UButton>
+          </div>
+
           <div class="mt-4 sm:mt-5 space-y-6">
-            <!-- 鱼盆趋势模型 -->
+            <!-- 趋势模型 -->
             <div>
               <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                 <h4 class="font-semibold text-zinc-950 text-sm sm:text-base">{{ dashboard.marketTemperature.trend.title }}</h4>

@@ -74,7 +74,7 @@ export async function buildMarketTemperature(options: { refresh?: boolean } = {}
 
   try {
     [trend, sector] = await Promise.all([
-      buildBoard('trend', '鱼盆趋势模型', TREND_ASSETS),
+      buildBoard('trend', '趋势模型', TREND_ASSETS),
       buildBoard('sector', '板块轮动', SECTOR_ASSETS)
     ])
   } catch (error) {
@@ -101,7 +101,7 @@ export async function buildMarketTemperature(options: { refresh?: boolean } = {}
 
 async function buildFromCachedBoards(): Promise<MarketTemperature | null> {
   const boards = await loadMarketTemperatureBoards()
-  const trend = withTitle(boards.trend, '鱼盆趋势模型')
+  const trend = withTitle(boards.trend, '趋势模型')
   const sector = withTitle(boards.sector, '板块轮动')
 
   if (!trend || !sector) {

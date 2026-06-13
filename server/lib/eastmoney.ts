@@ -236,7 +236,7 @@ function buildUnavailableMarketTemperature(): DividendDashboard['marketTemperatu
     calculation: '20日均线为最近20个交易日收盘价均值；数据源恢复或本地快照可用后自动显示。',
     trend: {
       category: 'trend',
-      title: '鱼盆趋势模型',
+      title: '趋势模型',
       tradeDate: null,
       rows: []
     },
