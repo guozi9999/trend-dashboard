@@ -104,7 +104,11 @@ function formatDate(value: string | null | undefined) {
 }
 
 function formatDateTime(value: string | null | undefined) {
-  return value ? value.replace('T', ' ').slice(0, 19) : '-'
+  if (!value) return '-'
+  const date = new Date(value)
+  // Convert to China timezone (UTC+8)
+  const chinaTime = new Date(date.getTime() + 8 * 60 * 60 * 1000)
+  return chinaTime.toISOString().replace('T', ' ').slice(0, 19)
 }
 
 function formatMoney(value: number | null | undefined) {
