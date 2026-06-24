@@ -2,14 +2,24 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from contextlib import asynccontextmanager
 import json
+import os
 import plotly.graph_objs as go
 from plotly.utils import PlotlyJSONEncoder
 
 from app.services.rotation import build_rotation_strategy
 from app.services.market_temperature import build_market_temperature
+from app.db.database import init_mysql
 
-app = FastAPI(title="Trend Dashboard")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_mysql()
+    yield
+
+
+app = FastAPI(title="Trend Dashboard", lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -64,4 +74,17 @@ async def read_root(request: Request, offset: int = 0):
             "dates_list": dates_list,
             "current_offset": offset
         }
+    )
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    port = int(os.getenv("PORT", "8765"))
+    reload_enabled = os.getenv("RELOAD", "false").lower() in ("1", "true", "yes", "on")
+    uvicorn.run(
+        "main:app" if reload_enabled else app,
+        host="0.0.0.0",
+        port=port,
+        reload=reload_enabled,
     )

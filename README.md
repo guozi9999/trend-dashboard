@@ -1,22 +1,32 @@
 # Trend Dashboard
 
-Nuxt + SQLite dividend dashboard for checking A-share dividend history, current dividend yield, China government bond yields, and yield spread.
+FastAPI trend dashboard for checking A-share market rotation and market temperature.
 
 ## Setup
 
 ```bash
-pnpm install
-pnpm dev
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn main:app --reload --port 8765
 ```
 
-The SQLite database cache is created automatically at `data/trend-dashboard.sqlite`.
+The MySQL database and cache tables are created automatically on startup. Configure the connection in `.env`:
+
+```text
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=trend_user
+MYSQL_PASSWORD=your_password_here
+MYSQL_DATABASE=trend_dashboard
+MYSQL_CHARSET=utf8mb4
+```
 
 ## Scripts
 
 ```bash
-pnpm test
-pnpm lint
-pnpm build
+python -m py_compile main.py app/db/database.py app/services/*.py
 ```
 
 ## Deploy to Render
