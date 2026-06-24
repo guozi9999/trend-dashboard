@@ -37,8 +37,8 @@ def calculate_ma(df, index, window):
         return None
     return df['close'].iloc[index - window + 1:index + 1].mean()
 
-def process_asset(asset, offset=0):
-    df = fetch_kline_data(asset['symbol'], asset['kind'])
+def process_asset(asset, offset=0, fetcher=fetch_kline_data):
+    df = fetcher(asset['symbol'], asset['kind'])
     if df is None or len(df) < LOOKBACK_DAYS + 1 + offset:
         return None
     
@@ -80,10 +80,10 @@ def process_asset(asset, offset=0):
         "rank": 0
     }
 
-def build_board(category, title, assets, offset=0):
+def build_board(category, title, assets, offset=0, fetcher=fetch_kline_data):
     rows = []
     for asset in assets:
-        row = process_asset(asset, offset)
+        row = process_asset(asset, offset, fetcher)
         if row:
             rows.append(row)
             
@@ -94,7 +94,7 @@ def build_board(category, title, assets, offset=0):
     # 计算昨天的排名以得出排序变化
     prev_rows = []
     for asset in assets:
-        prev_row = process_asset(asset, offset + 1)
+        prev_row = process_asset(asset, offset + 1, fetcher)
         if prev_row:
             prev_rows.append(prev_row)
     prev_rows.sort(key=lambda x: x["deviationPercent"] if x["deviationPercent"] is not None else float('-inf'), reverse=True)
@@ -110,9 +110,9 @@ def build_board(category, title, assets, offset=0):
         "rows": rows
     }
 
-def build_market_temperature(offset=0):
-    trend = build_board('trend', '趋势模型', TREND_ASSETS, offset)
-    sector = build_board('sector', '板块轮动', SECTOR_ASSETS, offset)
+def build_market_temperature(offset=0, fetcher=fetch_kline_data):
+    trend = build_board('trend', '趋势模型', TREND_ASSETS, offset, fetcher)
+    sector = build_board('sector', '板块轮动', SECTOR_ASSETS, offset, fetcher)
     
     return {
         "trend": trend,

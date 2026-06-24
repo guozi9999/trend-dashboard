@@ -2,7 +2,6 @@ fastapi
 uvicorn
 akshare
 jinja2
-plotly
 pandas
 sqlalchemy
 pymysql

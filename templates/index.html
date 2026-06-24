@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>趋势仪表盘</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
     <div class="container mx-auto p-4 max-w-7xl">
-        <header class="mb-6 border-b border-gray-700 pb-4 mt-4 flex justify-between items-end">
+        <header class="mb-6 border-b border-gray-700 pb-4 mt-4 flex justify-between items-end gap-4">
             <div>
                 <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
                     趋势仪表盘
@@ -19,27 +18,30 @@
                 <p class="text-gray-400 mt-2">基于 Python、FastAPI 和 AKShare 构建的量化策略监控面板</p>
             </div>
             
-            {% if dates_list %}
-            <div class="flex space-x-2">
-                {% for i in range(dates_list|length) %}
-                <a href="/?offset={{ i }}" class="px-3 py-1 text-sm rounded-md transition {% if i == current_offset %}bg-blue-600 text-white font-bold{% else %}bg-gray-700 text-gray-300 hover:bg-gray-600{% endif %}">
-                    {{ dates_list[i] }}
+            <div class="flex items-center gap-3">
+                <a href="/tasks" class="px-3 py-1 text-sm rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition">
+                    定时任务
                 </a>
+                {% if dates_list %}
+                <div class="flex space-x-2">
+                {% for i in range(dates_list|length) %}
+                    <a href="/?offset={{ i }}" class="px-3 py-1 text-sm rounded-md transition {% if i == current_offset %}bg-blue-600 text-white font-bold{% else %}bg-gray-700 text-gray-300 hover:bg-gray-600{% endif %}">
+                        {{ dates_list[i] }}
+                    </a>
                 {% endfor %}
+                </div>
+                {% endif %}
             </div>
-            {% endif %}
         </header>
         
         <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- 轮动策略区域 -->
-            <section class="space-y-6">
-                <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 hover:border-gray-600 transition duration-300">
-                    <h2 class="text-2xl font-semibold mb-2 text-gray-100">轮动策略</h2>
-                    <p class="text-gray-400 mb-4 text-sm">当前操作：<span class="font-bold text-{{ 'red-400' if rotation_data.action == 'hold' else 'emerald-400' }}">{% if rotation_data.action == 'hold' %}持有 / 买入{% else %}空仓 / 卖出{% endif %}</span></p>
-                    <div id="rotation-chart" class="w-full h-[300px]"></div>
-                </div>
-
+            <section class="lg:col-span-2">
                 <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 overflow-x-auto">
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-semibold mb-2 text-gray-100">轮动策略</h2>
+                        <p class="text-gray-400 text-sm">当前操作：<span class="font-bold text-{{ 'red-400' if rotation_data.action == 'hold' else 'emerald-400' }}">{% if rotation_data.action == 'hold' %}持有 / 买入{% else %}空仓 / 卖出{% endif %}</span></p>
+                    </div>
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="text-gray-400 border-b border-gray-700">
@@ -111,7 +113,7 @@
 
                 <!-- 板块轮动 -->
                 <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700 overflow-x-auto">
-                    <h2 class="text-2xl font-semibold mb-4 text-gray-100">板块轮动（历史回测）</h2>
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-100">板块</h2>
                     <table class="w-full text-left text-sm border-collapse whitespace-nowrap">
                         <thead>
                             <tr class="text-gray-400 border-b border-gray-700">
@@ -152,10 +154,5 @@
             </section>
         </main>
     </div>
-
-    <script>
-        var rotationGraphJson = {{ rotation_graph_json | safe }};
-        Plotly.newPlot('rotation-chart', rotationGraphJson.data, rotationGraphJson.layout, {responsive: true});
-    </script>
 </body>
 </html>

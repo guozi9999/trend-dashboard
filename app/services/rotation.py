@@ -61,16 +61,16 @@ def calculate_roc(df, lookback_days, offset=0):
     roc = ((latest['close'] - base['close']) / base['close']) * 100
     return roc, latest, base
 
-def build_rotation_strategy(offset=0):
+def build_rotation_strategy(offset=0, fetcher=fetch_kline_data):
     results = []
     for asset in ROTATION_ASSETS:
-        df = fetch_kline_data(asset['symbol'], asset['kind'])
+        df = fetcher(asset['symbol'], asset['kind'])
         roc, latest, base = calculate_roc(df, ROTATION_LOOKBACK_DAYS, offset)
         
         candidates = []
         if asset['kind'] == 'index':
             for c in asset['etfCandidates']:
-                cdf = fetch_kline_data(c['symbol'], 'etf')
+                cdf = fetcher(c['symbol'], 'etf')
                 turnover = cdf.iloc[-(1 + offset)]['volume'] if cdf is not None and not cdf.empty and len(cdf) >= 1 + offset else 0
                 candidates.append({
                     "code": c["code"],
